@@ -6,7 +6,7 @@ pub mod label;
 pub mod namespace;
 
 use crate::common::YaSerdeAttribute;
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 
 pub fn expand_derive_serialize(ast: &syn::DeriveInput) -> Result<TokenStream, String> {
@@ -33,11 +33,9 @@ pub fn expand_derive_serialize(ast: &syn::DeriveInput) -> Result<TokenStream, St
     syn::Data::Union(ref _data_union) => unimplemented!(),
   };
 
-  let dummy_const = Ident::new(&format!("_IMPL_YA_SERIALIZE_FOR_{}", name), name.span());
-
   Ok(quote! {
     #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
-    const #dummy_const: () = {
+    const _: () = {
       use ::std::str::FromStr as _;
 
       #impl_block
