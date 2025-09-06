@@ -142,10 +142,19 @@ pub fn serialize(
             Field::FieldOption { .. } | Field::FieldVec { .. } => {
               unimplemented!("Nested Option or Vec in Vec not supported for attributes")
             }
-            Field::FieldStruct { .. } => {
-              unimplemented!("Struct fields in Vec not supported for attributes")
-            }
-          }
+            Field::FieldStruct { .. } => field.ser_wrap_default_attribute(
+              Some(quote! {
+                self.#label
+                  .iter()
+                  .map(|item| ::yaserde::ser::to_string_content(item))
+                  .collect::<::std::result::Result<::std::vec::Vec<_>, _>>()?
+                  .join(" ")
+              }),
+              quote!({
+                struct_start_event.attr(#label_name, &yaserde_inner)
+              }),
+            ),
+          },
         }
       } else {
         match field.get_type() {

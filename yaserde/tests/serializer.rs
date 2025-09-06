@@ -442,3 +442,28 @@ fn ser_vec_as_attribute() {
   let content = r#"<TestTag numbers="1 2 3 4" strings="hello world" bools="true false true" floats="3.14 2.71" />"#;
   serialize_and_validate!(model, content);
 }
+
+#[test]
+fn ser_vec_as_attribute_nested() {
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  struct VecAttributeStruct {
+    #[yaserde(attribute = true)]
+    outer: Vec<Inner>,
+  }
+
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  enum Inner {
+    One,
+    Two,
+  }
+
+  let model = VecAttributeStruct {
+    outer: vec![Inner::One, Inner::Two],
+  };
+
+  // Expected XML with space-separated attribute values
+  let content = r#"<TestTag outer="One Two" />"#;
+  serialize_and_validate!(model, content);
+}
