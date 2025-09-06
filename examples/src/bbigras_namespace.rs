@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // related to issue https://github.com/media-io/yaserde/issues/15
 use yaserde::*;
 

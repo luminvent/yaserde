@@ -493,6 +493,7 @@ fn de_enum() {
     Black,
   }
 
+  #[allow(dead_code)]
   #[derive(YaDeserialize, PartialEq, Debug)]
   pub struct RGBColor {
     red: String,
@@ -1108,6 +1109,7 @@ fn de_nested_macro_rules() {
   macro_rules! float_attrs {
     ($type:ty) => {
       #[derive(PartialEq, Debug, YaDeserialize)]
+      #[allow(dead_code)]
       pub struct Outer {
         #[yaserde(attribute = true)]
         pub inner: Option<$type>,

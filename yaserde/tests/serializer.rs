@@ -435,11 +435,11 @@ fn ser_vec_as_attribute() {
     numbers: vec![1, 2, 3, 4],
     strings: vec!["hello".to_string(), "world".to_string()],
     bools: vec![true, false, true],
-    floats: vec![3.14, 2.71],
+    floats: vec![6.14, 2.71],
   };
 
   // Expected XML with space-separated attribute values
-  let content = r#"<TestTag numbers="1 2 3 4" strings="hello world" bools="true false true" floats="3.14 2.71" />"#;
+  let content = r#"<TestTag numbers="1 2 3 4" strings="hello world" bools="true false true" floats="6.14 2.71" />"#;
   serialize_and_validate!(model, content);
 }
 
