@@ -328,7 +328,7 @@ macro_rules! serialize_and_validate {
     log::debug!("serialize_and_validate @ {}:{}", file!(), line!());
     let data: Result<String, String> = yaserde::ser::to_string(&$model);
 
-    let content = &format!(r#"<?xml version="1.0" encoding="utf-8"?>{}"#, $content);
+    let content = &format!(r#"<?xml version="1.0" encoding="UTF-8"?>{}"#, $content);
     assert_eq!(
       data,
       Ok(content.split("\n").map(|s| s.trim()).collect::<String>())
