@@ -115,9 +115,36 @@ pub fn serialize(
               struct_start_event.attr(#label_name, &yaserde_inner)
             }),
           ),
-          Field::FieldVec { .. } => {
-            // TODO
-            quote!()
+          Field::FieldVec { data_type } => match *data_type {
+            Field::FieldString
+            | Field::FieldBool
+            | Field::FieldI8
+            | Field::FieldU8
+            | Field::FieldI16
+            | Field::FieldU16
+            | Field::FieldI32
+            | Field::FieldU32
+            | Field::FieldI64
+            | Field::FieldU64
+            | Field::FieldF32
+            | Field::FieldF64 => field.ser_wrap_default_attribute(
+              Some(quote! {
+                self.#label
+                  .iter()
+                  .map(|item| item.to_string())
+                  .collect::<::std::vec::Vec<_>>()
+                  .join(" ")
+              }),
+              quote!({
+                struct_start_event.attr(#label_name, &yaserde_inner)
+              }),
+            ),
+            Field::FieldOption { .. } | Field::FieldVec { .. } => {
+              unimplemented!("Nested Option or Vec in Vec not supported for attributes")
+            }
+            Field::FieldStruct { .. } => {
+              unimplemented!("Struct fields in Vec not supported for attributes")
+            }
           }
         }
       } else {

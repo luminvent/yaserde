@@ -415,3 +415,30 @@ fn ser_custom() {
   let content = "<Date><Year>2020</Year><Month>1</Month><DoubleDay>10</DoubleDay></Date>";
   serialize_and_validate!(model, content);
 }
+
+#[test]
+fn ser_vec_as_attribute() {
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  pub struct VecAttributeStruct {
+    #[yaserde(attribute = true)]
+    numbers: Vec<u32>,
+    #[yaserde(attribute = true)]
+    strings: Vec<String>,
+    #[yaserde(attribute = true)]
+    bools: Vec<bool>,
+    #[yaserde(attribute = true)]
+    floats: Vec<f64>,
+  }
+
+  let model = VecAttributeStruct {
+    numbers: vec![1, 2, 3, 4],
+    strings: vec!["hello".to_string(), "world".to_string()],
+    bools: vec![true, false, true],
+    floats: vec![3.14, 2.71],
+  };
+
+  // Expected XML with space-separated attribute values
+  let content = r#"<TestTag numbers="1 2 3 4" strings="hello world" bools="true false true" floats="3.14 2.71" />"#;
+  serialize_and_validate!(model, content);
+}
