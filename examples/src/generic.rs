@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use yaserde::*;
 
 #[derive(YaSerialize, YaDeserialize, Debug, Default, Clone, Eq, PartialEq)]

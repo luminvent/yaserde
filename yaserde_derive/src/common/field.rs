@@ -101,11 +101,11 @@ impl YaSerdeField {
       .map(|p| format!("{}_", p.to_upper_camel_case()))
       .unwrap_or_default();
 
-    let attribute = self
-      .attributes
-      .attribute
-      .then_some("Attribute_".to_string())
-      .unwrap_or_default();
+    let attribute = if self.attributes.attribute {
+      "Attribute_"
+    } else {
+      Default::default()
+    };
 
     Ident::new(
       &format!(
