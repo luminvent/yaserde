@@ -1134,6 +1134,45 @@ fn de_option_vec_as_attribute() {
 }
 
 #[test]
+fn de_option_vec_enum_as_attribute() {
+  init();
+
+  #[derive(YaDeserialize, PartialEq, Debug, Default)]
+  enum MyEnum {
+    #[default]
+    One,
+    Two,
+    Three,
+  }
+
+  #[derive(YaDeserialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  pub struct OptionVecEnumAttributeStruct {
+    #[yaserde(attribute = true)]
+    field: Option<Vec<MyEnum>>,
+  }
+
+  // Test case 1: Some(vec![MyEnum::One, MyEnum::Two, MyEnum::Three]) -> field="One Two Three"
+  let content = r#"<TestTag field="One Two Three" />"#;
+  let model = OptionVecEnumAttributeStruct {
+    field: Some(vec![MyEnum::One, MyEnum::Two, MyEnum::Three]),
+  };
+  convert_and_validate!(content, OptionVecEnumAttributeStruct, model);
+
+  // Test case 2: Some(empty_vec) -> field=""
+  let content = r#"<TestTag field="" />"#;
+  let model = OptionVecEnumAttributeStruct {
+    field: Some(vec![]),
+  };
+  convert_and_validate!(content, OptionVecEnumAttributeStruct, model);
+
+  // Test case 3: None -> no attribute
+  let content = r#"<TestTag />"#;
+  let model = OptionVecEnumAttributeStruct { field: None };
+  convert_and_validate!(content, OptionVecEnumAttributeStruct, model);
+}
+
+#[test]
 fn de_nested_macro_rules() {
   init();
 
