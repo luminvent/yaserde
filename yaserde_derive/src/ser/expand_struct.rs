@@ -75,21 +75,31 @@ pub fn serialize(
                 }
               }),
             ),
-            Field::FieldVec { .. } => {
-              let item_ident = Ident::new("yaserde_item", field.get_span());
-              let inner = enclose_formatted_characters(&item_ident, label_name);
-
-              field.ser_wrap_default_attribute(
-                None,
-                quote!({
-                  if let ::std::option::Option::Some(ref yaserde_list) = self.#label {
-                    for yaserde_item in yaserde_list.iter() {
-                      #inner
+            Field::FieldVec { .. } => field.ser_wrap_default_attribute(
+              Some(quote! {
+                self.#label
+                  .as_ref()
+                  .map_or_else(
+                    || ::std::string::String::new(),
+                    |yaserde_list| {
+                      yaserde_list
+                        .iter()
+                        .map(|item| item.to_string())
+                        .collect::<::std::vec::Vec<_>>()
+                        .join(" ")
                     }
-                  }
-                }),
-              )
-            }
+                  )
+              }),
+              quote!({
+                if self.#label.is_some() && !yaserde_inner.is_empty() {
+                  struct_start_event.attr(#label_name, &yaserde_inner)
+                } else if self.#label.is_some() {
+                  struct_start_event.attr(#label_name, "")
+                } else {
+                  struct_start_event
+                }
+              }),
+            ),
             Field::FieldStruct { .. } => field.ser_wrap_default_attribute(
               Some(quote! {
               self.#label
