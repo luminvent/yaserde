@@ -467,3 +467,31 @@ fn ser_vec_as_attribute_nested() {
   let content = r#"<TestTag outer="One Two" />"#;
   serialize_and_validate!(model, content);
 }
+
+#[test]
+fn ser_option_vec_as_attribute() {
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  pub struct OptionVecAttributeStruct {
+    #[yaserde(attribute = true)]
+    field: Option<Vec<u32>>,
+  }
+
+  // Expected XML with space-separated attribute values
+  let model = OptionVecAttributeStruct {
+    field: Some(vec![1, 2, 3, 4]),
+  };
+  let content = r#"<TestTag field="1 2 3 4" />"#;
+  serialize_and_validate!(model, content);
+
+  let model = OptionVecAttributeStruct {
+    field: Some(vec![]),
+  };
+  let content = r#"<TestTag field="" />"#;
+  serialize_and_validate!(model, content);
+
+  // Expected XML with no attributes
+  let model = OptionVecAttributeStruct { field: None };
+  let content = r#"<TestTag />"#;
+  serialize_and_validate!(model, content);
+}

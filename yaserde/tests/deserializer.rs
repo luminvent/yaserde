@@ -1103,6 +1103,37 @@ fn de_attribute_sequence() {
 }
 
 #[test]
+fn de_option_vec_as_attribute() {
+  init();
+
+  #[derive(YaDeserialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  pub struct OptionVecAttributeStruct {
+    #[yaserde(attribute = true)]
+    field: Option<Vec<u32>>,
+  }
+
+  // Test case 1: Some(populated_vec) -> field="1 2 3 4"
+  let content = r#"<TestTag field="1 2 3 4" />"#;
+  let model = OptionVecAttributeStruct {
+    field: Some(vec![1, 2, 3, 4]),
+  };
+  convert_and_validate!(content, OptionVecAttributeStruct, model);
+
+  // Test case 2: Some(empty_vec) -> field=""
+  let content = r#"<TestTag field="" />"#;
+  let model = OptionVecAttributeStruct {
+    field: Some(vec![]),
+  };
+  convert_and_validate!(content, OptionVecAttributeStruct, model);
+
+  // Test case 3: None -> no attribute
+  let content = r#"<TestTag />"#;
+  let model = OptionVecAttributeStruct { field: None };
+  convert_and_validate!(content, OptionVecAttributeStruct, model);
+}
+
+#[test]
 fn de_nested_macro_rules() {
   init();
 
