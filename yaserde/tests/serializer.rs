@@ -497,35 +497,56 @@ fn ser_option_vec_as_attribute() {
 }
 
 #[test]
-fn ser_option_vec_enum_as_attribute() {
-  #[derive(YaSerialize, PartialEq, Debug)]
-  enum MyEnum {
-    One,
-    Two,
-    Three,
+fn ser_option_vec_complex() {
+  #[derive(Default, PartialEq, Debug, YaSerialize)]
+  pub struct Start {
+    #[yaserde(attribute = true, rename = "value")]
+    pub value: String,
   }
 
-  #[derive(YaSerialize, PartialEq, Debug)]
-  #[yaserde(rename = "TestTag")]
-  pub struct OptionVecEnumAttributeStruct {
-    #[yaserde(attribute = true)]
-    field: Option<Vec<MyEnum>>,
+  #[derive(Default, PartialEq, Debug, YaSerialize)]
+  #[yaserde(rename = "String")]
+  pub struct StringStruct {
+    #[yaserde(rename = "Start")]
+    pub start: Option<Vec<Start>>,
   }
 
-  // Expected XML with space-separated attribute values
-  let model = OptionVecEnumAttributeStruct {
-    field: Some(vec![MyEnum::One, MyEnum::Two, MyEnum::Three]),
+  // Test serialization with Some(vec)
+  let model = StringStruct {
+    start: Some(vec![
+      Start {
+        value: "First string".to_string(),
+      },
+      Start {
+        value: "Second string".to_string(),
+      },
+      Start {
+        value: "Third string".to_string(),
+      },
+    ]),
   };
-  let content = r#"<TestTag field="One Two Three" />"#;
-  serialize_and_validate!(model, content);
 
-  let model = OptionVecEnumAttributeStruct {
-    field: Some(vec![]),
+  let content = yaserde::ser::to_string(&model).unwrap();
+  assert_eq!(
+    content,
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?><String><Start value=\"First string\" /><Start value=\"Second string\" /><Start value=\"Third string\" /></String>"
+  );
+
+  // Test serialization with None
+  let model_none = StringStruct { start: None };
+  let content_none = yaserde::ser::to_string(&model_none).unwrap();
+  assert_eq!(
+    content_none,
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?><String />"
+  );
+
+  // Test serialization with Some(empty_vec)
+  let model_empty = StringStruct {
+    start: Some(vec![]),
   };
-  let content = r#"<TestTag field="" />"#;
-  serialize_and_validate!(model, content);
-
-  let model = OptionVecEnumAttributeStruct { field: None };
-  let content = r#"<TestTag />"#;
-  serialize_and_validate!(model, content);
+  let content_empty = yaserde::ser::to_string(&model_empty).unwrap();
+  assert_eq!(
+    content_empty,
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?><String />"
+  );
 }

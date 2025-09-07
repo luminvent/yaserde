@@ -25,7 +25,18 @@ pub fn parse(
     .map(|field| YaSerdeField::new(field.clone()))
     .filter_map(|field| match field.get_type() {
       Field::FieldStruct { struct_name } => build_default_value(&field, Some(quote!(#struct_name))),
-      Field::FieldOption { .. } => build_default_value(&field, None),
+      Field::FieldOption { data_type } => match *data_type {
+        Field::FieldVec { data_type: inner_data_type } => match *inner_data_type {
+          Field::FieldStruct { ref struct_name } => {
+            build_default_value(&field, Some(quote!(::std::vec::Vec<#struct_name>)))
+          }
+          simple_type => {
+            let type_token: TokenStream = simple_type.into();
+            build_default_value(&field, Some(quote!(::std::vec::Vec<#type_token>)))
+          }
+        },
+        _ => build_default_value(&field, None),
+      },
       Field::FieldVec { data_type } => match *data_type {
         Field::FieldStruct { ref struct_name } => {
           build_default_vec_value(&field, Some(quote!(::std::vec::Vec<#struct_name>)))
@@ -196,9 +207,33 @@ pub fn parse(
         Field::FieldStruct { struct_name } => {
           visit_struct(struct_name, quote! { = ::std::option::Option::Some(value) })
         }
-        Field::FieldOption { data_type } => {
-          visit_sub(data_type, quote! { = ::std::option::Option::Some(value) })
-        }
+        Field::FieldOption { data_type } => match *data_type {
+          Field::FieldVec { data_type: inner_data_type } => match *inner_data_type {
+            Field::FieldStruct { struct_name } => {
+              // Handle Option<Vec<Struct>>
+              visit_struct(struct_name, quote! { 
+                = if #value_label.is_some() {
+                  #value_label.as_mut().unwrap().push(value);
+                  #value_label
+                } else {
+                  Some(vec![value])
+                }
+              })
+            }
+            simple_type => {
+              // Handle Option<Vec<simple_type>>
+              visit_simple(simple_type, quote! {
+                = if #value_label.is_some() {
+                  #value_label.as_mut().unwrap().push(value);
+                  #value_label
+                } else {
+                  Some(vec![value])
+                }
+              })
+            }
+          },
+          _ => visit_sub(data_type, quote! { = ::std::option::Option::Some(value) }),
+        },
         Field::FieldVec { data_type } => visit_sub(data_type, quote! { .push(value) }),
         simple_type => visit_simple(simple_type, quote! { = ::std::option::Option::Some(value) }),
       }

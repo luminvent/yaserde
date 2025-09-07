@@ -259,18 +259,34 @@ pub fn serialize(
             })
           }
           Field::FieldVec { .. } => {
-            let item_ident = Ident::new("yaserde_item", field.get_span());
-            let inner = enclose_formatted_characters_for_value(&item_ident, label_name);
+            // Only use attribute serialization if the field is marked as an attribute
+            if field.is_attribute() {
+              let item_ident = Ident::new("yaserde_item", field.get_span());
+              let inner = enclose_formatted_characters_for_value(&item_ident, label_name);
 
-            Some(quote! {
-              #conditions {
-                if let ::std::option::Option::Some(ref yaserde_items) = &self.#label {
-                  for yaserde_item in yaserde_items.iter() {
-                    #inner
+              Some(quote! {
+                #conditions {
+                  if let ::std::option::Option::Some(ref yaserde_items) = &self.#label {
+                    for yaserde_item in yaserde_items.iter() {
+                      #inner
+                    }
                   }
                 }
-              }
-            })
+              })
+            } else {
+              // For non-attribute Option<Vec<T>>, use standard serialization
+              Some(quote! {
+                #conditions {
+                  if let ::std::option::Option::Some(ref items) = &self.#label {
+                    for item in items.iter() {
+                      writer.set_start_event_name(::std::option::Option::Some(#label_name.to_string()));
+                      writer.set_skip_start_end(false);
+                      ::yaserde::YaSerialize::serialize(item, writer)?;
+                    }
+                  }
+                }
+              })
+            }
           }
           Field::FieldStruct { .. } => Some(if field.is_flatten() {
             quote! {
