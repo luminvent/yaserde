@@ -495,3 +495,37 @@ fn ser_option_vec_as_attribute() {
   let content = r#"<TestTag />"#;
   serialize_and_validate!(model, content);
 }
+
+#[test]
+fn ser_option_vec_enum_as_attribute() {
+  #[derive(YaSerialize, PartialEq, Debug)]
+  enum MyEnum {
+    One,
+    Two,
+    Three,
+  }
+
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  pub struct OptionVecEnumAttributeStruct {
+    #[yaserde(attribute = true)]
+    field: Option<Vec<MyEnum>>,
+  }
+
+  // Expected XML with space-separated attribute values
+  let model = OptionVecEnumAttributeStruct {
+    field: Some(vec![MyEnum::One, MyEnum::Two, MyEnum::Three]),
+  };
+  let content = r#"<TestTag field="One Two Three" />"#;
+  serialize_and_validate!(model, content);
+
+  let model = OptionVecEnumAttributeStruct {
+    field: Some(vec![]),
+  };
+  let content = r#"<TestTag field="" />"#;
+  serialize_and_validate!(model, content);
+
+  let model = OptionVecEnumAttributeStruct { field: None };
+  let content = r#"<TestTag />"#;
+  serialize_and_validate!(model, content);
+}
