@@ -16,7 +16,7 @@ derive = ["yaserde_derive"]
 
 [dependencies]
 yaserde_derive = { version = "0.12.0", path = "../yaserde_derive", optional = true }
-xml-rs = "0.8.3"
+xml-rs = "1.0.0"
 log = "0.4"
 
 [dev-dependencies]
