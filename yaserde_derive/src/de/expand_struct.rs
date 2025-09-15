@@ -26,7 +26,9 @@ pub fn parse(
     .filter_map(|field| match field.get_type() {
       Field::FieldStruct { struct_name } => build_default_value(&field, Some(quote!(#struct_name))),
       Field::FieldOption { data_type } => match *data_type {
-        Field::FieldVec { data_type: inner_data_type } => match *inner_data_type {
+        Field::FieldVec {
+          data_type: inner_data_type,
+        } => match *inner_data_type {
           Field::FieldStruct { ref struct_name } => {
             build_default_value(&field, Some(quote!(::std::vec::Vec<#struct_name>)))
           }
@@ -208,28 +210,36 @@ pub fn parse(
           visit_struct(struct_name, quote! { = ::std::option::Option::Some(value) })
         }
         Field::FieldOption { data_type } => match *data_type {
-          Field::FieldVec { data_type: inner_data_type } => match *inner_data_type {
+          Field::FieldVec {
+            data_type: inner_data_type,
+          } => match *inner_data_type {
             Field::FieldStruct { struct_name } => {
               // Handle Option<Vec<Struct>>
-              visit_struct(struct_name, quote! { 
-                = if #value_label.is_some() {
-                  #value_label.as_mut().unwrap().push(value);
-                  #value_label
-                } else {
-                  Some(vec![value])
-                }
-              })
+              visit_struct(
+                struct_name,
+                quote! {
+                  = if #value_label.is_some() {
+                    #value_label.as_mut().unwrap().push(value);
+                    #value_label
+                  } else {
+                    Some(vec![value])
+                  }
+                },
+              )
             }
             simple_type => {
               // Handle Option<Vec<simple_type>>
-              visit_simple(simple_type, quote! {
-                = if #value_label.is_some() {
-                  #value_label.as_mut().unwrap().push(value);
-                  #value_label
-                } else {
-                  Some(vec![value])
-                }
-              })
+              visit_simple(
+                simple_type,
+                quote! {
+                  = if #value_label.is_some() {
+                    #value_label.as_mut().unwrap().push(value);
+                    #value_label
+                  } else {
+                    Some(vec![value])
+                  }
+                },
+              )
             }
           },
           _ => visit_sub(data_type, quote! { = ::std::option::Option::Some(value) }),
