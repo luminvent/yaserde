@@ -75,21 +75,31 @@ pub fn serialize(
                 }
               }),
             ),
-            Field::FieldVec { .. } => {
-              let item_ident = Ident::new("yaserde_item", field.get_span());
-              let inner = enclose_formatted_characters(&item_ident, label_name);
-
-              field.ser_wrap_default_attribute(
-                None,
-                quote!({
-                  if let ::std::option::Option::Some(ref yaserde_list) = self.#label {
-                    for yaserde_item in yaserde_list.iter() {
-                      #inner
-                    }
-                  }
-                }),
-              )
-            }
+            Field::FieldVec { data_type } => match *data_type {
+              Field::FieldString
+              | Field::FieldBool
+              | Field::FieldI8
+              | Field::FieldU8
+              | Field::FieldI16
+              | Field::FieldU16
+              | Field::FieldI32
+              | Field::FieldU32
+              | Field::FieldI64
+              | Field::FieldU64
+              | Field::FieldF32
+              | Field::FieldF64 => {
+                ser_option_vec_attribute(&field, &label, &label_name, quote!(item.to_string()))
+              }
+              Field::FieldStruct { .. } => ser_option_vec_attribute(
+                &field,
+                &label,
+                &label_name,
+                quote!(::yaserde::ser::to_string_content(item).unwrap_or_default()),
+              ),
+              _ => {
+                unimplemented!("Complex data types in Option<Vec<T>> attributes not yet supported")
+              }
+            },
             Field::FieldStruct { .. } => field.ser_wrap_default_attribute(
               Some(quote! {
               self.#label
@@ -115,10 +125,46 @@ pub fn serialize(
               struct_start_event.attr(#label_name, &yaserde_inner)
             }),
           ),
-          Field::FieldVec { .. } => {
-            // TODO
-            quote!()
-          }
+          Field::FieldVec { data_type } => match *data_type {
+            Field::FieldString
+            | Field::FieldBool
+            | Field::FieldI8
+            | Field::FieldU8
+            | Field::FieldI16
+            | Field::FieldU16
+            | Field::FieldI32
+            | Field::FieldU32
+            | Field::FieldI64
+            | Field::FieldU64
+            | Field::FieldF32
+            | Field::FieldF64 => field.ser_wrap_default_attribute(
+              Some(quote! {
+                self.#label
+                  .iter()
+                  .map(|item| item.to_string())
+                  .collect::<::std::vec::Vec<_>>()
+                  .join(" ")
+              }),
+              quote!({
+                struct_start_event.attr(#label_name, &yaserde_inner)
+              }),
+            ),
+            Field::FieldOption { .. } | Field::FieldVec { .. } => {
+              unimplemented!("Nested Option or Vec in Vec not supported for attributes")
+            }
+            Field::FieldStruct { .. } => field.ser_wrap_default_attribute(
+              Some(quote! {
+                self.#label
+                  .iter()
+                  .map(|item| ::yaserde::ser::to_string_content(item))
+                  .collect::<::std::result::Result<::std::vec::Vec<_>, _>>()?
+                  .join(" ")
+              }),
+              quote!({
+                struct_start_event.attr(#label_name, &yaserde_inner)
+              }),
+            ),
+          },
         }
       } else {
         match field.get_type() {
@@ -213,18 +259,34 @@ pub fn serialize(
             })
           }
           Field::FieldVec { .. } => {
-            let item_ident = Ident::new("yaserde_item", field.get_span());
-            let inner = enclose_formatted_characters_for_value(&item_ident, label_name);
+            // Only use attribute serialization if the field is marked as an attribute
+            if field.is_attribute() {
+              let item_ident = Ident::new("yaserde_item", field.get_span());
+              let inner = enclose_formatted_characters_for_value(&item_ident, label_name);
 
-            Some(quote! {
-              #conditions {
-                if let ::std::option::Option::Some(ref yaserde_items) = &self.#label {
-                  for yaserde_item in yaserde_items.iter() {
-                    #inner
+              Some(quote! {
+                #conditions {
+                  if let ::std::option::Option::Some(ref yaserde_items) = &self.#label {
+                    for yaserde_item in yaserde_items.iter() {
+                      #inner
+                    }
                   }
                 }
-              }
-            })
+              })
+            } else {
+              // For non-attribute Option<Vec<T>>, use standard serialization
+              Some(quote! {
+                #conditions {
+                  if let ::std::option::Option::Some(ref items) = &self.#label {
+                    for item in items.iter() {
+                      writer.set_start_event_name(::std::option::Option::Some(#label_name.to_string()));
+                      writer.set_skip_start_end(false);
+                      ::yaserde::YaSerialize::serialize(item, writer)?;
+                    }
+                  }
+                }
+              })
+            }
           }
           Field::FieldStruct { .. } => Some(if field.is_flatten() {
             quote! {
@@ -363,4 +425,39 @@ pub fn serialize(
     struct_inspector,
     generics,
   )
+}
+
+/// Helper function to generate serialization code for Option<Vec<T>> attributes
+fn ser_option_vec_attribute(
+  field: &YaSerdeField,
+  label: &Option<Ident>,
+  label_name: &str,
+  item_serializer: TokenStream,
+) -> TokenStream {
+  let yaserde_inner_expr = quote! {
+    self.#label
+      .as_ref()
+      .map_or_else(
+        || ::std::string::String::new(),
+        |yaserde_list| {
+          yaserde_list
+            .iter()
+            .map(|item| #item_serializer)
+            .collect::<::std::vec::Vec<_>>()
+            .join(" ")
+        }
+      )
+  };
+
+  let attribute_expr = quote!({
+    if self.#label.is_some() && !yaserde_inner.is_empty() {
+      struct_start_event.attr(#label_name, &yaserde_inner)
+    } else if self.#label.is_some() {
+      struct_start_event.attr(#label_name, "")
+    } else {
+      struct_start_event
+    }
+  });
+
+  field.ser_wrap_default_attribute(Some(yaserde_inner_expr), attribute_expr)
 }

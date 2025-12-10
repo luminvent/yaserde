@@ -2,10 +2,6 @@ use crate::common::YaSerdeField;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
-pub fn enclose_formatted_characters(label: &Ident, label_name: String) -> TokenStream {
-  enclose_xml_event(label_name, quote!(format!("{}", &self.#label)))
-}
-
 pub fn enclose_formatted_characters_for_value(label: &Ident, label_name: String) -> TokenStream {
   enclose_xml_event(label_name, quote!(format!("{}", #label)))
 }

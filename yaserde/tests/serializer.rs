@@ -415,3 +415,138 @@ fn ser_custom() {
   let content = "<Date><Year>2020</Year><Month>1</Month><DoubleDay>10</DoubleDay></Date>";
   serialize_and_validate!(model, content);
 }
+
+#[test]
+fn ser_vec_as_attribute() {
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  pub struct VecAttributeStruct {
+    #[yaserde(attribute = true)]
+    numbers: Vec<u32>,
+    #[yaserde(attribute = true)]
+    strings: Vec<String>,
+    #[yaserde(attribute = true)]
+    bools: Vec<bool>,
+    #[yaserde(attribute = true)]
+    floats: Vec<f64>,
+  }
+
+  let model = VecAttributeStruct {
+    numbers: vec![1, 2, 3, 4],
+    strings: vec!["hello".to_string(), "world".to_string()],
+    bools: vec![true, false, true],
+    floats: vec![6.14, 2.71],
+  };
+
+  // Expected XML with space-separated attribute values
+  let content = r#"<TestTag numbers="1 2 3 4" strings="hello world" bools="true false true" floats="6.14 2.71" />"#;
+  serialize_and_validate!(model, content);
+}
+
+#[test]
+fn ser_vec_as_attribute_nested() {
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  struct VecAttributeStruct {
+    #[yaserde(attribute = true)]
+    outer: Vec<Inner>,
+  }
+
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  enum Inner {
+    One,
+    Two,
+  }
+
+  let model = VecAttributeStruct {
+    outer: vec![Inner::One, Inner::Two],
+  };
+
+  // Expected XML with space-separated attribute values
+  let content = r#"<TestTag outer="One Two" />"#;
+  serialize_and_validate!(model, content);
+}
+
+#[test]
+fn ser_option_vec_as_attribute() {
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  pub struct OptionVecAttributeStruct {
+    #[yaserde(attribute = true)]
+    field: Option<Vec<u32>>,
+  }
+
+  // Expected XML with space-separated attribute values
+  let model = OptionVecAttributeStruct {
+    field: Some(vec![1, 2, 3, 4]),
+  };
+  let content = r#"<TestTag field="1 2 3 4" />"#;
+  serialize_and_validate!(model, content);
+
+  let model = OptionVecAttributeStruct {
+    field: Some(vec![]),
+  };
+  let content = r#"<TestTag field="" />"#;
+  serialize_and_validate!(model, content);
+
+  // Expected XML with no attributes
+  let model = OptionVecAttributeStruct { field: None };
+  let content = r#"<TestTag />"#;
+  serialize_and_validate!(model, content);
+}
+
+#[test]
+fn ser_option_vec_complex() {
+  #[derive(Default, PartialEq, Debug, YaSerialize)]
+  pub struct Start {
+    #[yaserde(attribute = true, rename = "value")]
+    pub value: String,
+  }
+
+  #[derive(Default, PartialEq, Debug, YaSerialize)]
+  #[yaserde(rename = "String")]
+  pub struct StringStruct {
+    #[yaserde(rename = "Start")]
+    pub start: Option<Vec<Start>>,
+  }
+
+  // Test serialization with Some(vec)
+  let model = StringStruct {
+    start: Some(vec![
+      Start {
+        value: "First string".to_string(),
+      },
+      Start {
+        value: "Second string".to_string(),
+      },
+      Start {
+        value: "Third string".to_string(),
+      },
+    ]),
+  };
+
+  let content = yaserde::ser::to_string(&model).unwrap();
+  assert_eq!(
+    content,
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?><String><Start value=\"First string\" /><Start value=\"Second string\" /><Start value=\"Third string\" /></String>"
+  );
+
+  // Test serialization with None
+  let model_none = StringStruct { start: None };
+  let content_none = yaserde::ser::to_string(&model_none).unwrap();
+  assert_eq!(
+    content_none,
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?><String />"
+  );
+
+  // Test serialization with Some(empty_vec)
+  let model_empty = StringStruct {
+    start: Some(vec![]),
+  };
+  let content_empty = yaserde::ser::to_string(&model_empty).unwrap();
+  assert_eq!(
+    content_empty,
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?><String />"
+  );
+}

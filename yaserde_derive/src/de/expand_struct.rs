@@ -25,7 +25,20 @@ pub fn parse(
     .map(|field| YaSerdeField::new(field.clone()))
     .filter_map(|field| match field.get_type() {
       Field::FieldStruct { struct_name } => build_default_value(&field, Some(quote!(#struct_name))),
-      Field::FieldOption { .. } => build_default_value(&field, None),
+      Field::FieldOption { data_type } => match *data_type {
+        Field::FieldVec {
+          data_type: inner_data_type,
+        } => match *inner_data_type {
+          Field::FieldStruct { ref struct_name } => {
+            build_default_value(&field, Some(quote!(::std::vec::Vec<#struct_name>)))
+          }
+          simple_type => {
+            let type_token: TokenStream = simple_type.into();
+            build_default_value(&field, Some(quote!(::std::vec::Vec<#type_token>)))
+          }
+        },
+        _ => build_default_value(&field, None),
+      },
       Field::FieldVec { data_type } => match *data_type {
         Field::FieldStruct { ref struct_name } => {
           build_default_vec_value(&field, Some(quote!(::std::vec::Vec<#struct_name>)))
@@ -127,7 +140,12 @@ pub fn parse(
         Field::FieldStruct { struct_name } => struct_visitor(struct_name),
         Field::FieldOption { data_type } => match *data_type {
           Field::FieldStruct { struct_name } => struct_visitor(struct_name),
-          Field::FieldOption { .. } | Field::FieldVec { .. } => None,
+          Field::FieldOption { .. } => None,
+          Field::FieldVec { data_type } => match *data_type {
+            Field::FieldStruct { struct_name } => struct_visitor(struct_name),
+            Field::FieldOption { .. } | Field::FieldVec { .. } => None,
+            simple_type => simple_type_visitor(simple_type),
+          },
           simple_type => simple_type_visitor(simple_type),
         },
         Field::FieldVec { data_type } => match *data_type {
@@ -191,9 +209,41 @@ pub fn parse(
         Field::FieldStruct { struct_name } => {
           visit_struct(struct_name, quote! { = ::std::option::Option::Some(value) })
         }
-        Field::FieldOption { data_type } => {
-          visit_sub(data_type, quote! { = ::std::option::Option::Some(value) })
-        }
+        Field::FieldOption { data_type } => match *data_type {
+          Field::FieldVec {
+            data_type: inner_data_type,
+          } => match *inner_data_type {
+            Field::FieldStruct { struct_name } => {
+              // Handle Option<Vec<Struct>>
+              visit_struct(
+                struct_name,
+                quote! {
+                  = if #value_label.is_some() {
+                    #value_label.as_mut().unwrap().push(value);
+                    #value_label
+                  } else {
+                    Some(vec![value])
+                  }
+                },
+              )
+            }
+            simple_type => {
+              // Handle Option<Vec<simple_type>>
+              visit_simple(
+                simple_type,
+                quote! {
+                  = if #value_label.is_some() {
+                    #value_label.as_mut().unwrap().push(value);
+                    #value_label
+                  } else {
+                    Some(vec![value])
+                  }
+                },
+              )
+            }
+          },
+          _ => visit_sub(data_type, quote! { = ::std::option::Option::Some(value) }),
+        },
         Field::FieldVec { data_type } => visit_sub(data_type, quote! { .push(value) }),
         simple_type => visit_simple(simple_type, quote! { = ::std::option::Option::Some(value) }),
       }
@@ -259,6 +309,23 @@ pub fn parse(
         })
       };
 
+      let visit_option_vec = |visitor: &Ident, visitor_label: &Ident| {
+        Some(quote! {
+          for attr in attributes {
+            if attr.name.local_name == #label_name {
+              if #label.is_none() {
+                #label = Some(Vec::new());
+              }
+              for value in attr.value.split_whitespace() {
+                let visitor = #visitor_label{};
+                let value = visitor.#visitor(value)?;
+                #label.as_mut().unwrap().push(value);
+              }
+            }
+          }
+        })
+      };
+
       let visit_string = || {
         Some(quote! {
           for attr in attributes {
@@ -286,7 +353,18 @@ pub fn parse(
       };
 
       let visit_sub = |sub_type: Box<Field>, action: TokenStream| match *sub_type {
-        Field::FieldOption { .. } | Field::FieldVec { .. } => unimplemented!(),
+        Field::FieldOption { .. } => unimplemented!(),
+        Field::FieldVec { data_type } => match data_type.as_ref() {
+          Field::FieldStruct { struct_name } => visit_option_vec(
+            &Ident::new("visit_str", field.get_span()),
+            &field.get_visitor_ident(Some(struct_name)),
+          ),
+          Field::FieldOption { .. } | Field::FieldVec { .. } => unimplemented!("Not supported"),
+          simple_type => visit_option_vec(
+            &simple_type.get_simple_type_visitor(),
+            &field.get_visitor_ident(None),
+          ),
+        },
         Field::FieldStruct { struct_name } => visit_struct(struct_name, action),
         simple_type => visit_simple(simple_type, action),
       };

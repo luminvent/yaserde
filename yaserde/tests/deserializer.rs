@@ -493,6 +493,7 @@ fn de_enum() {
     Black,
   }
 
+  #[allow(dead_code)]
   #[derive(YaDeserialize, PartialEq, Debug)]
   pub struct RGBColor {
     red: String,
@@ -1102,12 +1103,83 @@ fn de_attribute_sequence() {
 }
 
 #[test]
+fn de_option_vec_as_attribute() {
+  init();
+
+  #[derive(YaDeserialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  pub struct OptionVecAttributeStruct {
+    #[yaserde(attribute = true)]
+    field: Option<Vec<u32>>,
+  }
+
+  // Test case 1: Some(populated_vec) -> field="1 2 3 4"
+  let content = r#"<TestTag field="1 2 3 4" />"#;
+  let model = OptionVecAttributeStruct {
+    field: Some(vec![1, 2, 3, 4]),
+  };
+  convert_and_validate!(content, OptionVecAttributeStruct, model);
+
+  // Test case 2: Some(empty_vec) -> field=""
+  let content = r#"<TestTag field="" />"#;
+  let model = OptionVecAttributeStruct {
+    field: Some(vec![]),
+  };
+  convert_and_validate!(content, OptionVecAttributeStruct, model);
+
+  // Test case 3: None -> no attribute
+  let content = r#"<TestTag />"#;
+  let model = OptionVecAttributeStruct { field: None };
+  convert_and_validate!(content, OptionVecAttributeStruct, model);
+}
+
+#[test]
+fn de_option_vec_enum_as_attribute() {
+  init();
+
+  #[derive(YaDeserialize, PartialEq, Debug, Default)]
+  enum MyEnum {
+    #[default]
+    One,
+    Two,
+    Three,
+  }
+
+  #[derive(YaDeserialize, PartialEq, Debug)]
+  #[yaserde(rename = "TestTag")]
+  pub struct OptionVecEnumAttributeStruct {
+    #[yaserde(attribute = true)]
+    field: Option<Vec<MyEnum>>,
+  }
+
+  // Test case 1: Some(vec![MyEnum::One, MyEnum::Two, MyEnum::Three]) -> field="One Two Three"
+  let content = r#"<TestTag field="One Two Three" />"#;
+  let model = OptionVecEnumAttributeStruct {
+    field: Some(vec![MyEnum::One, MyEnum::Two, MyEnum::Three]),
+  };
+  convert_and_validate!(content, OptionVecEnumAttributeStruct, model);
+
+  // Test case 2: Some(empty_vec) -> field=""
+  let content = r#"<TestTag field="" />"#;
+  let model = OptionVecEnumAttributeStruct {
+    field: Some(vec![]),
+  };
+  convert_and_validate!(content, OptionVecEnumAttributeStruct, model);
+
+  // Test case 3: None -> no attribute
+  let content = r#"<TestTag />"#;
+  let model = OptionVecEnumAttributeStruct { field: None };
+  convert_and_validate!(content, OptionVecEnumAttributeStruct, model);
+}
+
+#[test]
 fn de_nested_macro_rules() {
   init();
 
   macro_rules! float_attrs {
     ($type:ty) => {
       #[derive(PartialEq, Debug, YaDeserialize)]
+      #[allow(dead_code)]
       pub struct Outer {
         #[yaserde(attribute = true)]
         pub inner: Option<$type>,
