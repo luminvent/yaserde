@@ -18,6 +18,7 @@ pub struct Deserializer<R: Read> {
   depth: usize,
   reader: EventReader<R>,
   peeked: Option<XmlEvent>,
+  pub inner_struct_label: Option<&'static str>,
 }
 
 impl<R: Read> Deserializer<R> {
@@ -26,6 +27,7 @@ impl<R: Read> Deserializer<R> {
       depth: 0,
       reader,
       peeked: None,
+      inner_struct_label: None,
     }
   }
 

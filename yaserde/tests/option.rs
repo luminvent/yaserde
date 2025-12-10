@@ -144,7 +144,7 @@ mod tests {
 
   #[test]
   fn deserialize_without_car() {
-    let person = r#"<?xml version="1.0" encoding="utf-8"?>
+    let person = r#"<?xml version="1.0" encoding="UTF-8"?>
       <Person>
           <EyeColor>brown</EyeColor>
           <Age>25</Age>

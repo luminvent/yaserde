@@ -584,7 +584,7 @@ fn de_complex_enum() {
     Dotted(u32),
   }
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base>
       <background>
         <Black>text</Black>
@@ -599,7 +599,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base>
       <background>
         <Orange>text</Orange>
@@ -614,7 +614,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base>
       <background>
         <Red>56</Red>
@@ -629,7 +629,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base>
       <background>
         <Green>
@@ -647,7 +647,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base>
       <background>
         <Yellow>text</Yellow>
@@ -662,7 +662,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base>
       <background>
         <Brown>
@@ -680,7 +680,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base>
       <background>
         <Blue>abc</Blue>
@@ -696,7 +696,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base>
       <background>
         <Purple>12</Purple>
@@ -712,7 +712,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base>
       <background>
         <Magenta><fi>12</fi><se>23</se></Magenta>
@@ -731,7 +731,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base xmlns:ns="http://www.sample.com/ns/domain">
       <background>
         <NotSoCyan><fi>12</fi><se>23</se></NotSoCyan>
@@ -750,7 +750,7 @@ fn de_complex_enum() {
     }
   );
 
-  let content = r#"<?xml version="1.0" encoding="utf-8"?>
+  let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <base xmlns:ns="http://www.sample.com/ns/domain">
       <background>
         <renamed.with.dots>54</renamed.with.dots>
@@ -855,7 +855,7 @@ fn de_subitem_issue_12() {
   }
 
   convert_and_validate!(
-    r#"<?xml version="1.0" encoding="utf-8"?>
+    r#"<?xml version="1.0" encoding="UTF-8"?>
     <Struct>
       <id>54</id>
       <SubStruct>
@@ -885,7 +885,7 @@ fn de_subitem_issue_12_with_sub() {
   }
 
   convert_and_validate!(
-    r#"<?xml version="1.0" encoding="utf-8"?>
+    r#"<?xml version="1.0" encoding="UTF-8"?>
     <Struct>
       <id>54</id>
       <SubStruct>
@@ -912,7 +912,7 @@ fn de_subitem_issue_12_attributes() {
   }
 
   convert_and_validate!(
-    r#"<?xml version="1.0" encoding="utf-8"?>
+    r#"<?xml version="1.0" encoding="UTF-8"?>
     <Struct id="54">
       <SubStruct id="86" />
     </Struct>
@@ -941,7 +941,7 @@ fn de_subitem_issue_12_attributes_with_sub() {
   }
 
   convert_and_validate!(
-    r#"<?xml version="1.0" encoding="utf-8"?>
+    r#"<?xml version="1.0" encoding="UTF-8"?>
     <Struct id="54">
       <sub1 id="63" />
       <sub2 id="72" />
@@ -1188,4 +1188,134 @@ fn de_nested_macro_rules() {
   }
 
   float_attrs!(f32);
+}
+
+#[test]
+fn de_nested_element_equality() {
+  #[derive(YaDeserialize, Debug, PartialEq)]
+  #[yaserde(rename = "EBMLSchema")]
+  struct Schema {
+    #[yaserde(rename = "element")]
+    elements: Vec<Element>,
+  }
+
+  #[derive(YaDeserialize, Debug, PartialEq)]
+  #[yaserde(rename = "element")]
+  struct Element {
+    #[yaserde(rename = "documentation")]
+    documentation: Vec<Documentation>,
+  }
+
+  #[derive(YaDeserialize, Debug, PartialEq)]
+  #[yaserde(rename = "documentation")]
+  struct Documentation {
+    #[yaserde(text = true)]
+    body: String,
+  }
+
+  let parent = r#"<EBMLSchema>
+<element>
+<documentation>Test</documentation>
+</element>
+</EBMLSchema>"#;
+  let parent: Schema = yaserde::de::from_str(parent).unwrap();
+
+  let child = r#"<element>
+<documentation>Test</documentation>
+</element>"#;
+  let child: Element = yaserde::de::from_str(child).unwrap();
+
+  assert_ne!(parent.elements, vec![]);
+  assert_eq!(parent.elements[0], child);
+}
+
+#[test]
+fn de_nested_3_levels() {
+  #[derive(YaSerialize, YaDeserialize, Debug, PartialEq)]
+  struct A {
+    id: String,
+    #[yaserde(rename = "SAME")]
+    many: Vec<B>,
+  }
+
+  #[derive(YaSerialize, YaDeserialize, Debug, PartialEq)]
+  struct B {
+    id: Option<String>,
+    #[yaserde(rename = "SAME")]
+    many: Vec<C>,
+  }
+
+  #[derive(YaSerialize, YaDeserialize, Debug, PartialEq)]
+  struct C {
+    id: Option<String>,
+  }
+
+  let content =
+    r#"<A><id>a1</id><SAME><id>b1</id><SAME><id>c1</id></SAME><SAME><id>c2</id></SAME></SAME></A>"#;
+  let model = A {
+    id: "a1".to_string(),
+    many: vec![B {
+      id: Some("b1".to_string()),
+      many: vec![
+        C {
+          id: Some("c1".to_string()),
+        },
+        C {
+          id: Some("c2".to_string()),
+        },
+      ],
+    }],
+  };
+  deserialize_and_validate!(content, model, A);
+}
+
+#[test]
+fn de_nested_issue_192() {
+  #[derive(Clone, Default, Debug, PartialEq, YaDeserialize)]
+  #[yaserde(
+    prefix = "xs",
+    namespaces = {
+      "xs" = "http://www.w3.org/2001/XMLSchema",
+    }
+  )]
+  pub struct XSDGroup {
+    #[yaserde(rename = "ref", attribute = true)]
+    pub reference: String,
+  }
+
+  #[derive(Clone, Default, Debug, PartialEq, YaDeserialize)]
+  #[yaserde(
+    rename = "sequence",
+    prefix = "xs",
+    namespaces = {
+      "xs" = "http://www.w3.org/2001/XMLSchema",
+    }
+  )]
+  pub struct Sequence {
+    #[yaserde(rename = "group", prefix = "xs")]
+    pub groups: Vec<XSDGroup>,
+
+    #[yaserde(rename = "sequence", prefix = "xs")]
+    pub sequences: Vec<Sequence>,
+  }
+
+  let content = r#"
+        <xsd:sequence xmlns:xsd="http://www.w3.org/2001/XMLSchema" >
+          <xsd:group ref="AR:AR-OBJECT"/>
+          <xsd:group ref="AR:AUTOSAR"/>
+        </xsd:sequence>
+      "#;
+  let model = Sequence {
+    groups: vec![
+      XSDGroup {
+        reference: "AR:AR-OBJECT".to_string(),
+      },
+      XSDGroup {
+        reference: "AR:AUTOSAR".to_string(),
+      },
+    ],
+    sequences: vec![],
+  };
+
+  deserialize_and_validate!(content, model, Sequence);
 }
