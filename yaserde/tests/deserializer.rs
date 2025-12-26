@@ -1189,3 +1189,20 @@ fn de_nested_macro_rules() {
 
   float_attrs!(f32);
 }
+
+#[test]
+fn de_strict() {
+  init();
+
+  #[derive(PartialEq, Debug, YaDeserialize)]
+  pub struct Struct {
+    id: i32,
+  }
+  let xml_content = r#"<?xml version="1.0" encoding="utf-8"?>
+      <Struct>
+          <id>123</id>
+          <NonExistentAttrShouldCrash></NonExistentAttrShouldCrash>
+        </Struct>"#;
+  let load: Result<Struct, String> = from_str(xml_content);
+  assert!(load.is_err());
+}
