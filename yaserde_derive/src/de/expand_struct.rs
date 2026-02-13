@@ -509,6 +509,9 @@ pub fn parse(
                 match (namespace.as_str(), name.local_name.as_str()) {
                   #call_visitors
                   _ => {
+                    ::yaserde::__derive_trace!("SKIPPINGSKIPPING  Skipping element {:?}", name.local_name);
+                    return Err(format!("Found unauthorized element {}", name.local_name));
+
                     let event = reader.next_event()?;
                     #write_unused
 
