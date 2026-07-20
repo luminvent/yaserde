@@ -15,7 +15,7 @@ edition = "2018"
 heck = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_tokenstream = "0.2"
-syn = { version = "2", features = ["parsing", "visit", "extra-traits"] }
+syn = { version = "3", features = ["parsing", "visit", "extra-traits"] }
 proc-macro2 = "1"
 quote = "~1.0"
 xml-rs = "0.8.3"
