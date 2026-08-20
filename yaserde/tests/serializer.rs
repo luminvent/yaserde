@@ -350,6 +350,50 @@ fn ser_keyword() {
 }
 
 #[test]
+fn ser_custom_attribute_escapes_text_once() {
+  #[derive(PartialEq, Debug)]
+  struct Label(String);
+
+  impl YaSerialize for Label {
+    fn serialize<W: Write>(&self, writer: &mut yaserde::ser::Serializer<W>) -> Result<(), String> {
+      writer
+        .write(xml::writer::XmlEvent::characters(&self.0))
+        .map_err(|error| error.to_string())
+    }
+
+    fn serialize_attributes(
+      &self,
+      attributes: Vec<xml::attribute::OwnedAttribute>,
+      namespace: xml::namespace::Namespace,
+    ) -> Result<
+      (
+        Vec<xml::attribute::OwnedAttribute>,
+        xml::namespace::Namespace,
+      ),
+      String,
+    > {
+      Ok((attributes, namespace))
+    }
+  }
+
+  #[derive(YaSerialize, PartialEq, Debug)]
+  #[yaserde(rename = "application")]
+  struct Application {
+    #[yaserde(attribute = true)]
+    label: Label,
+  }
+
+  let model = Application {
+    label: Label(r#"R&D <Preview> &amp; "quoted" ✓"#.into()),
+  };
+
+  serialize_and_validate!(
+    model,
+    r#"<application label="R&amp;D &lt;Preview&gt; &amp;amp; &quot;quoted&quot; ✓" />"#
+  );
+}
+
+#[test]
 fn ser_name_issue_21() {
   #[derive(YaSerialize, PartialEq, Debug)]
   #[yaserde(rename = "base")]

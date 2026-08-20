@@ -4,6 +4,7 @@
 use crate::YaSerialize;
 use std::io::{Cursor, Write};
 use std::str;
+use xml::reader::XmlEvent as ReaderEvent;
 use xml::writer::XmlEvent;
 use xml::{EmitterConfig, EventWriter};
 
@@ -39,7 +40,20 @@ pub fn to_string_content<T: YaSerialize>(model: &T) -> Result<String, String> {
   let buf = Cursor::new(Vec::new());
   let cursor = serialize_with_writer_content(model, buf)?;
   let data = str::from_utf8(cursor.get_ref()).expect("Found invalid UTF-8");
-  Ok(data.into())
+  let wrapped = format!("<yaserde-content>{data}</yaserde-content>");
+  let mut content = String::new();
+  for event in xml::EventReader::from_str(&wrapped) {
+    match event.map_err(|error| error.to_string())? {
+      ReaderEvent::Characters(value)
+      | ReaderEvent::CData(value)
+      | ReaderEvent::Whitespace(value) => content.push_str(&value),
+      ReaderEvent::StartElement { name, .. } if name.local_name != "yaserde-content" => {
+        return Err("attribute serializers must produce text content".into());
+      }
+      _ => {}
+    }
+  }
+  Ok(content)
 }
 
 pub fn serialize_with_writer_content<W: Write, T: YaSerialize>(
