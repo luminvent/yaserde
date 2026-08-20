@@ -3,8 +3,8 @@ extern crate yaserde;
 #[macro_use]
 extern crate yaserde_derive;
 
-use std::io::Write;
-use yaserde::YaSerialize;
+use std::io::{Read, Write};
+use yaserde::{YaDeserialize, YaSerialize};
 
 #[test]
 fn ser_basic() {
@@ -376,7 +376,17 @@ fn ser_custom_attribute_escapes_text_once() {
     }
   }
 
-  #[derive(YaSerialize, PartialEq, Debug)]
+  impl YaDeserialize for Label {
+    fn deserialize<R: Read>(reader: &mut yaserde::de::Deserializer<R>) -> Result<Self, String> {
+      loop {
+        if let xml::reader::XmlEvent::Characters(value) = reader.next_event()? {
+          return Ok(Self(value));
+        }
+      }
+    }
+  }
+
+  #[derive(YaDeserialize, YaSerialize, PartialEq, Debug)]
   #[yaserde(rename = "application")]
   struct Application {
     #[yaserde(attribute = true)]
@@ -391,6 +401,8 @@ fn ser_custom_attribute_escapes_text_once() {
     model,
     r#"<application label="R&amp;D &lt;Preview&gt; &amp;amp; &quot;quoted&quot; ✓" />"#
   );
+  let xml = yaserde::ser::to_string(&model).unwrap();
+  assert_eq!(yaserde::de::from_str::<Application>(&xml), Ok(model));
 }
 
 #[test]

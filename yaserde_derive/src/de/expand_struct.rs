@@ -98,7 +98,8 @@ pub fn parse(
               self,
               v: &str,
             ) -> ::std::result::Result<Self::Value, ::std::string::String> {
-              let content = format!("{}{}{}", #xml_opening, v, #xml_closing);
+              let value = ::yaserde::__xml::escape::escape_str_pcdata(v);
+              let content = format!("{}{}{}", #xml_opening, value, #xml_closing);
               ::yaserde::de::from_str(&content)
             }
           }
