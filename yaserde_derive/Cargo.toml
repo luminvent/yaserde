@@ -15,7 +15,7 @@ rust-version.workspace = true
 [dependencies]
 heck = "0.5"
 serde = { version = "1", features = ["derive"] }
-serde_tokenstream = "0.2"
+serde_tokenstream = "0.3"
 syn = { version = "2", features = ["parsing", "visit", "extra-traits"] }
 proc-macro2 = "1"
 quote = "~1.0"
