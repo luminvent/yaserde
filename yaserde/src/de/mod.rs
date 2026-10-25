@@ -112,10 +112,10 @@ impl<R: Read> Deserializer<R> {
     self.depth
   }
 
-    #[doc(hidden)]
-    pub fn is_flattened_root(&self) -> bool {
-      self.flattened && self.depth == 0
-    }
+  #[doc(hidden)]
+  pub fn is_flattened_root(&self) -> bool {
+    self.flattened && self.depth == 0
+  }
 
   pub fn read_inner_value<T, F: FnOnce(&mut Self) -> Result<T>>(&mut self, f: F) -> Result<T> {
     match self.next_event()? {
