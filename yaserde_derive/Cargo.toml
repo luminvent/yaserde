@@ -1,6 +1,6 @@
 [package]
 name = "yaserde_derive"
-version = "0.13.1"
+version = "0.13.2"
 authors = ["Marc-Antoine Arnaud <arnaud.marcantoine@gmail.com>"]
 description = "Serialization and deserialization macros"
 keywords = ["Serialization", "Deserialization"]
