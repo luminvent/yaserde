@@ -274,11 +274,11 @@ pub fn parse(
 
       match field.get_type() {
         Field::FieldStruct { .. } => Ok(quote! {
-          #value_label = Some(::yaserde::de::from_str(&unused_xml_elements)?);
+          #value_label = Some(::yaserde::de::from_str_flattened(&unused_xml_elements)?);
         }),
         Field::FieldOption { data_type } => match *data_type {
           Field::FieldStruct { .. } => Ok(quote! {
-            #value_label = ::yaserde::de::from_str(&unused_xml_elements).ok();
+            #value_label = ::yaserde::de::from_str_flattened(&unused_xml_elements).ok();
           }),
           _ => Err(field.unsupported("`flatten` is only supported on struct fields")),
         },
@@ -504,7 +504,7 @@ pub fn parse(
         ::yaserde::__derive_debug!("Struct {} @ {}: start to parse {:?}", stringify!(#name), start_depth,
                named_element);
 
-        if reader.depth() == 0 {
+        if reader.depth() == 0 && !reader.is_flattened_root() {
           #namespaces_matching
         }
 

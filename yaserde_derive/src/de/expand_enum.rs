@@ -56,7 +56,9 @@ pub fn parse(
         let start_depth = reader.depth();
         ::yaserde::__derive_debug!("Enum {} @ {}: start to parse {:?}", stringify!(#name), start_depth, named_element);
 
-        #namespaces_matching
+        if !reader.is_flattened_root() {
+          #namespaces_matching
+        }
 
         #[allow(unused_assignments, unused_mut)]
         let mut enum_value = ::std::option::Option::None;

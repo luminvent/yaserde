@@ -523,3 +523,85 @@ fn struct_default_namespace_no_prefix() {
   serialize_and_validate!(model, content);
   deserialize_and_validate!(content, model, Book);
 }
+
+#[test]
+fn struct_namespace_with_flatten() {
+  #[derive(Debug, PartialEq, YaDeserialize)]
+  struct Inner {
+    value: String,
+  }
+
+  #[derive(Debug, PartialEq, YaDeserialize)]
+  #[yaserde(
+        rename = "root",
+        prefix = "ns",
+        namespaces = {
+            "ns" = "http://example.com/ns"
+        }
+    )]
+  struct Root {
+    #[yaserde(flatten = true)]
+    inner: Inner,
+  }
+
+  let xml = r#"
+        <ns:root xmlns:ns="http://example.com/ns">
+            <value>hello</value>
+        </ns:root>
+        "#;
+
+  let actual: Root = yaserde::de::from_str(xml).unwrap();
+
+  assert_eq!(
+    actual,
+    Root {
+      inner: Inner {
+        value: "hello".to_string()
+      }
+    }
+  )
+}
+
+#[test]
+fn struct_namespace_with_flatten_qualified_different_namespaces() {
+  #[derive(Debug, PartialEq, YaDeserialize)]
+  #[yaserde(
+        namespaces = {
+            "base" = "http://example.com/base"
+        }
+    )]
+  struct Inner {
+    #[yaserde(prefix = "base")]
+    value: String,
+  }
+
+  #[derive(Debug, PartialEq, YaDeserialize)]
+  #[yaserde(
+        rename = "root",
+        prefix = "ext",
+        namespaces = {
+            "ext" = "http://example.com/ext"
+        }
+    )]
+  struct Root {
+    #[yaserde(flatten = true)]
+    inner: Inner,
+  }
+
+  let xml = r#"
+        <ext:root xmlns:ext="http://example.com/ext" xmlns:base="http://example.com/base">
+            <base:value>hello</base:value>
+        </ext:root>
+        "#;
+
+  let actual: Root = yaserde::de::from_str(xml).unwrap();
+
+  assert_eq!(
+    actual,
+    Root {
+      inner: Inner {
+        value: "hello".to_string()
+      }
+    }
+  )
+}

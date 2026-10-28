@@ -10,6 +10,13 @@ pub fn from_str<T: YaDeserialize>(s: &str) -> Result<T> {
   from_reader(s.as_bytes())
 }
 
+#[doc(hidden)]
+pub fn from_str_flattened<T: YaDeserialize>(s: &str) -> Result<T> {
+  let mut reader = Deserializer::new_from_reader(s.as_bytes());
+  reader.flattened = true;
+  <T as YaDeserialize>::deserialize(&mut reader)
+}
+
 pub fn from_reader<R: Read, T: YaDeserialize>(reader: R) -> Result<T> {
   <T as YaDeserialize>::deserialize(&mut Deserializer::new_from_reader(reader))
 }
@@ -18,6 +25,7 @@ pub struct Deserializer<R: Read> {
   depth: usize,
   reader: EventReader<R>,
   peeked: Option<XmlEvent>,
+  flattened: bool,
 }
 
 impl<R: Read> Deserializer<R> {
@@ -26,6 +34,7 @@ impl<R: Read> Deserializer<R> {
       depth: 0,
       reader,
       peeked: None,
+      flattened: false,
     }
   }
 
@@ -101,6 +110,11 @@ impl<R: Read> Deserializer<R> {
 
   pub fn depth(&self) -> usize {
     self.depth
+  }
+
+  #[doc(hidden)]
+  pub fn is_flattened_root(&self) -> bool {
+    self.flattened && self.depth == 0
   }
 
   pub fn read_inner_value<T, F: FnOnce(&mut Self) -> Result<T>>(&mut self, f: F) -> Result<T> {
